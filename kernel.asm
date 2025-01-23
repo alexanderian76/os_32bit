@@ -37,10 +37,37 @@ section .text
 
     
     call move_cursor
+	
+	xor esi, esi
+	mov esi, file_stage2_bin
+	call puts
 
     jmp $
 
 VGA equ 0xb8000
+
+
+puts:
+    push eax
+    push ebx
+	push edx
+	xor eax, eax
+	xor edx, edx
+	mov eax, 0x5c
+.loop_puts:
+	mov bl, [esi + edx]
+	cmp bl, 0x0
+    je .done_puts
+    mov bh, 0x3
+    call print_char
+	add edx, 0x1
+	add eax, 0x2
+    jmp .loop_puts
+.done_puts:
+	pop edx
+    pop ebx
+    pop eax
+    ret
 
 print_char:
     mov [VGA + eax], bx
@@ -101,4 +128,4 @@ print_alphabet:
 	jne .loop
     ret
 
-file_stage2_bin:        db 'TEST STRING'
+file_stage2_bin:        db 'TEST STRING qweqweqwr 777'

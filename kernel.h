@@ -3,7 +3,7 @@ extern int posX = 1;
 extern int posY = 1;
 #include "types.h"
 
-
+extern void start();
 
 uint8_t inb (uint16_t _port);
 

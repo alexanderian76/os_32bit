@@ -2,17 +2,27 @@
 #include "types.h"
 
 
-extern void main(){
+extern int main(){
     GLOBAL_VIDEO_ADDRESS = 0xb8000;
   //enable_cursor(0, 10);
 
    // GLOBAL_VIDEO_ADDRESS = 0xb8000;
-   
+    start();
     
-    print_char('7');
+    print_char('?');
+    print_char('?');
+    print_char('?');
+    print_char('?');
+    
+    char str[] = "zxc";
+    print(str);
+    print_char('*');
   //  print_char('1');
    // print_char('3');
-    
+    while(1)
+    {
+        
+    }
     
 }
 
@@ -74,8 +84,8 @@ void print_char(char ch)
         posY = (posY + 1);
         posX = posX - 80;
     }
-  //  move_cursor(posX, posY);
-  //  update_cursor(posX, posY);
+   // move_cursor(posX, posY);
+    update_cursor(posX, posY);
 }
 
 
@@ -83,7 +93,6 @@ void print_char(char ch)
 
 void print(char* str)
 {
- //   print_char(*str);
     while(*str != '\0')
     {
         print_char(*str);

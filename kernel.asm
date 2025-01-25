@@ -1,7 +1,11 @@
-
+	 global _GLOBAL_OFFSET_TABLE_
+ 
+_GLOBAL_OFFSET_TABLE_: dw 0x4000
+extern main
 section .text
 	[bits 32]
-
+global start
+start:
 	xor eax, eax
 	mov eax, 0h
     mov bh, 0x3
@@ -42,6 +46,7 @@ section .text
 	mov esi, file_stage2_bin
 	call puts
 
+	ret ;remove ret to jmp far
     jmp $
 
 VGA equ 0xb8000

@@ -45,10 +45,10 @@ start:
 	xor esi, esi
 	mov esi, file_stage2_bin
 	call puts
-
-	ret ;remove ret to jmp far
-    jmp $
-
+ret
+	;ret ;remove ret to jmp far
+  ;  jmp $
+global VGA
 VGA equ 0xb8000
 
 
@@ -76,7 +76,29 @@ puts:
 
 print_char:
     mov [VGA + eax], bx
+
+	push eax
+	push edx
+	push ebx
+
+	mov edx, eax
+	shr edx, 16
+	mov bx, 2h
+	div bx
+	mov edx, eax
+	shr edx, 16
+	mov bx, 80h
+	div bx
     
+    mov bx, dx
+
+    
+    call move_cursor
+
+	pop ebx
+	pop edx
+	pop eax
+
     ret
 
 
@@ -133,4 +155,4 @@ print_alphabet:
 	jne .loop
     ret
 
-file_stage2_bin:        db 'TEST STRING qweqweqwr 777'
+file_stage2_bin:        db 'TEST STRING qweqweqwr 777', 0

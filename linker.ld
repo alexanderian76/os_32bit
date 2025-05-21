@@ -1,21 +1,23 @@
-ENTRY(start)
+ENTRY(kernel_main)  /* Entry point of the kernel */
 
-SECTIONS {
-    . = 1M;
+SECTIONS
+{
+    . = 0x1000;  /* Load the kernel at 0x1000 */
 
-    .boot :
-    {
-        /* ensure that the multiboot header is at the beginning */
-        *(.multiboot_header)
+    .text : {
+        *(.text)  /* All .text sections (code) */
     }
 
-    .text :
-    {
-        *(.text)
+    .rodata : {
+        *(.rodata*)  /* All read-only data sections */
     }
-    .idt BLOCK(0x1000) : ALIGN(0x1000)
-    {
-    IDT = .;
-    . = . + 0x1000;
+
+    .data : {
+        *(.data)  /* All .data sections (initialized variables) */
+    }
+
+    .bss : {
+        *(COMMON)  /* All COMMON sections (uninitialized global variables) */
+        *(.bss)    /* All .bss sections (uninitialized static variables) */
     }
 }

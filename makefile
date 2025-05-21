@@ -15,9 +15,10 @@ second:
 
 	nasm -f bin boot.asm -o bin/boot.bin
 	nasm kernel.asm -f elf -o ./bin/kernel_entry.o
-	gcc -ffreestanding -m32 -g -c kernel.c -o bin/kernel.o
+	gcc -ffreestanding -m32 -fno-pie -g -c kernel.c -o bin/kernel.o
+
 	nasm zeroes.asm -f bin -o bin/zeroes.bin
-	ld  -m elf_i386 -o bin/full_kernel.bin -Ttext 0x1000 bin/kernel.o bin/kernel_entry.o   --oformat binary
+	ld -m elf_i386 -o bin/full_kernel.bin -T linker.ld  bin/kernel.o bin/kernel_entry.o  --oformat binary
 	
 	cat bin/boot.bin bin/full_kernel.bin bin/zeroes.bin  > bin/OS.bin
 	dd if=bin/OS.bin of=bin/main_floppy.img conv=notrunc 

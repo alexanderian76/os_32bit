@@ -26,3 +26,10 @@ void update_cursor(uint16_t x, uint16_t y);
 void disable_cursor();
 int posX = 1;
 int posY = 1;
+
+
+uint32_t page_directory[1024] __attribute__((aligned(4096)));
+uint32_t first_page_table[1024] __attribute__((aligned(4096)));
+
+extern void loadPageDirectory(unsigned int*);
+extern void enablePaging();

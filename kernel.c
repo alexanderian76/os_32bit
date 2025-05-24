@@ -7,10 +7,14 @@ struct idt_descriptor idt_desc;
 // Main kernel function
 void kernel_main()
 {
+
+
     // Set up IDT
     VIDEO_MEMORY = 0xB8000;
     enable_cursor(0, 11);
     start();
+
+
     print("Hello world!");
     idt_desc.limit = sizeof(idt) - 1;
     idt_desc.base = (uint32_t)&idt;
@@ -26,11 +30,38 @@ void kernel_main()
 
     // Enable interrupts
     asm volatile("sti");
+    int i;
+    for (i = 0; i < 1024; i++)
+    {
+        // This sets the following flags to the pages:
+        //   Supervisor: Only kernel-mode can access them
+        //   Write Enabled: It can be both read from and written to
+        //   Not Present: The page table is not present
+        page_directory[i] = 0x00000002;
+    }
 
+    // we will fill all 1024 entries in the table, mapping 4 megabytes
+    for (int i = 0; i < 1024; i++)
+    {
+        // As the address is page aligned, it will always leave 12 bits zeroed.
+        // Those bits are used by the attributes ;)
+        first_page_table[i] = (i * 0x1000) | 3; // attributes: supervisor level, read/write, present.
+    }
+
+    page_directory[0] = ((unsigned int)first_page_table) | 3;
+    
+    loadPageDirectory(page_directory);
+    enablePaging();
+    char *message = (char*)0x3ffffe; // последний адрес (всего смаплено 4 мегабайта)
+    message[0] = 'H';
+    message[1] = 'i';
+    print_char(message[0]);
+    print_char(message[1]);
     // Main loop
     while (1)
         ;
 }
+
 // Read a byte from a port
 static inline uint8_t inb(uint16_t port)
 {
@@ -52,18 +83,18 @@ void keyboard_handler()
     uint8_t scancode = inb(0x60);
     uint8_t statusCode = inb(0x64);
     // Print the scancode to the screen (for debugging)
-  //  print_char(statusCode);
-    if(keyboard_map[(unsigned char)scancode] > 0) {
+    //  print_char(statusCode);
+    if (scancode < 128 && keyboard_map[(unsigned char)scancode] > 0)
+    {
 
-     /*   *(char*)VIDEO_MEMORY = keyboard_map[(unsigned char)scancode];
-                            // Print the scancode
-        VIDEO_MEMORY += 0x1; // Move to the next character position
-        *(char*)VIDEO_MEMORY = 0x5;
-        VIDEO_MEMORY += 0x1;*/
+        /*   *(char*)VIDEO_MEMORY = keyboard_map[(unsigned char)scancode];
+                               // Print the scancode
+           VIDEO_MEMORY += 0x1; // Move to the next character position
+           *(char*)VIDEO_MEMORY = 0x5;
+           VIDEO_MEMORY += 0x1;*/
         print_char(keyboard_map[(unsigned char)scancode]);
         // Send End of Interrupt (EOI) to the PIC
         update_cursor(((VIDEO_MEMORY - 0xb8000) / 2) % 80, (VIDEO_MEMORY - 0xb8000) / 160);
-        
     }
 
     outb(0x20, 0x20);
@@ -82,19 +113,18 @@ void enable_cursor(uint8_t cursor_start, uint8_t cursor_end)
 
 void update_cursor(uint16_t x, uint16_t y)
 {
-	uint16_t pos = y * 80 + x;
-	outb(0x3D4, 0x0F);
-	outb(0x3D5, (uint8_t) (pos & 0xFF));
-	outb(0x3D4, 0x0E);
-	outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
+    uint16_t pos = y * 80 + x;
+    outb(0x3D4, 0x0F);
+    outb(0x3D5, (uint8_t)(pos & 0xFF));
+    outb(0x3D4, 0x0E);
+    outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
 }
 
 void disable_cursor()
 {
-	outb(0x3D4, 0x0A);
-	outb(0x3D5, 0x20);
+    outb(0x3D4, 0x0A);
+    outb(0x3D5, 0x20);
 }
-
 
 // Set up an IDT gate
 void idt_set_gate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags)
@@ -129,26 +159,23 @@ void remap_pic()
 
 void print_char(char ch)
 {
-    *(char*)VIDEO_MEMORY = ch;
+    *(char *)VIDEO_MEMORY = ch;
     VIDEO_MEMORY += 0x1;
-    *(char*)VIDEO_MEMORY = 0x5;
+    *(char *)VIDEO_MEMORY = 0x5;
     VIDEO_MEMORY += 0x1;
     posX = posX + 1;
-    if(posX >= 80)
+    if (posX >= 80)
     {
         posY = (posY + 1);
         posX = posX - 80;
     }
-   // move_cursor(posX, posY);
+    // move_cursor(posX, posY);
     update_cursor(posX, posY);
 }
 
-
-
-
-void print(char* str)
+void print(char *str)
 {
-    while(*str != '\0')
+    while (*str != '\0')
     {
         print_char(*str);
         *str++;

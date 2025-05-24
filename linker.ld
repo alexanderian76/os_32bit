@@ -6,18 +6,10 @@ SECTIONS
 
     .text : {
         *(.text)  /* All .text sections (code) */
-    }
-
-    .rodata : {
-        *(.rodata*)  /* All read-only data sections */
-    }
-
-    .data : {
-        *(.data)  /* All .data sections (initialized variables) */
-    }
-
-    .bss : {
+        *(.rodata*) 
+        *(.data)  
         *(COMMON)  /* All COMMON sections (uninitialized global variables) */
-        *(.bss)    /* All .bss sections (uninitialized static variables) */
+        *(.bss) 
     }
+
 }

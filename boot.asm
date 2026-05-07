@@ -12,7 +12,7 @@ mov bp, 0x8000
 mov sp, bp
 
 mov bx, KERNEL_LOCATION
-mov dh, 4
+mov dh, 40 ; количество секторов, загружаемых с диска
 
 mov ah, 0x02
 mov al, dh 

@@ -4,32 +4,15 @@ int VIDEO_MEMORY;
 // IDT and IDT descriptor
 struct idt_entry idt[256];
 struct idt_descriptor idt_desc;
+
+extern uint32_t kernel_end;
+char *memory = (char *)&kernel_end;
 // Main kernel function
 void kernel_main()
 {
 
+    print("Initializing...\n");
 
-    // Set up IDT
-    VIDEO_MEMORY = 0xB8000;
-    enable_cursor(0, 11);
-    start();
-
-
-    print("Hello world!");
-    idt_desc.limit = sizeof(idt) - 1;
-    idt_desc.base = (uint32_t)&idt;
-
-    // Set up keyboard interrupt (IRQ1 -> INT 0x21)
-    idt_set_gate(0x21, (uint32_t)keyboard_handler, 0x08, 0x8E);
-
-    // Load IDT
-    asm volatile("lidt %0" : : "m"(idt_desc));
-
-    // Remap PIC
-    remap_pic();
-
-    // Enable interrupts
-    asm volatile("sti");
     int i;
     for (i = 0; i < 1024; i++)
     {
@@ -49,14 +32,67 @@ void kernel_main()
     }
 
     page_directory[0] = ((unsigned int)first_page_table) | 3;
-    
+
     loadPageDirectory(page_directory);
     enablePaging();
-    char *message = (char*)0x3ffffe; // последний адрес (всего смаплено 4 мегабайта)
+
+    VIDEO_MEMORY = 0xB8000;
+    // Set up IDT
+
+    enable_cursor(0, 11);
+    start();
+
+    idt_desc.limit = sizeof(idt) - 1;
+    idt_desc.base = (uint32_t)&idt;
+
+    // Set up keyboard interrupt (IRQ1 -> INT 0x21)
+    idt_set_gate(0x21, (uint32_t)keyboard_handler, 0x08, 0x8E);
+
+    // Load IDT
+    asm volatile("lidt %0" : : "m"(idt_desc));
+
+    // Remap PIC
+    remap_pic();
+
+    // Enable interrupts
+    asm volatile("sti");
+
+    print("Kernel end at: ");
+    print_hex((uint32_t)&kernel_end);
+    print(" ");
+
+    /*char *message = (char *)0x200000; // последний адрес (всего смаплено 4 мегабайта)
     message[0] = 'H';
     message[1] = 'i';
     print_char(message[0]);
-    print_char(message[1]);
+    print_char(message[1]);*/
+
+    uint32_t test_addr = 0x200000;
+    print("Testing page at 0x200000... ");
+
+    // Читаем текущее значение
+    uint8_t old_value = *(uint8_t *)test_addr;
+    print_hex(old_value);
+    print(" ");
+
+    // Пытаемся записать
+    *(uint8_t *)test_addr = 0xAA;
+    print("Write done. Reading back: ");
+    uint8_t new_value = *(uint8_t *)test_addr;
+    print_char(new_value);
+    print(" ");
+    print_hex(new_value);
+    print(" ");
+    if (new_value == 0xAA)
+    {
+        print("Memory works! Keyboard should work...\n");
+    }
+    else
+    {
+        print("Memory NOT writable! Page fault?\n");
+    }
+
+    print("System ready. Type something...\n");
     // Main loop
     while (1)
         ;
@@ -82,9 +118,10 @@ void keyboard_handler()
     // Read the scancode from the keyboard data port (0x60)
     uint8_t scancode = inb(0x60);
     uint8_t statusCode = inb(0x64);
+
     // Print the scancode to the screen (for debugging)
     //  print_char(statusCode);
-    if (scancode < 128 && keyboard_map[(unsigned char)scancode] > 0)
+    if (scancode < 128 && keyboard_map[(unsigned char)scancode] > 0 && keyboard_map[(unsigned char)scancode] != '\n')
     {
 
         /*   *(char*)VIDEO_MEMORY = keyboard_map[(unsigned char)scancode];
@@ -94,6 +131,18 @@ void keyboard_handler()
            VIDEO_MEMORY += 0x1;*/
         print_char(keyboard_map[(unsigned char)scancode]);
         // Send End of Interrupt (EOI) to the PIC
+        update_cursor(((VIDEO_MEMORY - 0xb8000) / 2) % 80, (VIDEO_MEMORY - 0xb8000) / 160);
+        memory += 1;
+        *memory = keyboard_map[(unsigned char)scancode];
+    }
+    else if (keyboard_map[(unsigned char)scancode] == '\n' && memory >= 2 && ((int)memory % 2 == 0) && memory > &kernel_end)
+    {
+        /*  for(int i = 0; i < 0x00300000; i++) {
+              memory += 1;
+              *memory = '7';
+          }*/
+        print_char(memory[0] + memory[-1] - 48);
+        memory = memory - 2;
         update_cursor(((VIDEO_MEMORY - 0xb8000) / 2) % 80, (VIDEO_MEMORY - 0xb8000) / 160);
     }
 
@@ -180,4 +229,28 @@ void print(char *str)
         print_char(*str);
         *str++;
     }
+}
+
+void print_hex(uint32_t num)
+{
+    const char *hex_chars = "0123456789ABCDEF";
+    char buffer[9]; // 8 hex digits + null
+    buffer[8] = '\0';
+
+    for (int i = 7; i >= 0; i--)
+    {
+        buffer[i] = hex_chars[num & 0xF];
+
+        num >>= 4;
+    }
+    print("0x");
+    print(buffer);
+}
+
+void __stack_chk_fail(void)
+{
+    // Если это случилось - стек переполнен
+    print("Stack smashing detected!\n");
+    while (1)
+        ; // Бесконечный цикл (panic)
 }

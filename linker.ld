@@ -1,15 +1,26 @@
-ENTRY(kernel_main)  /* Entry point of the kernel */
+ENTRY(start)
 
 SECTIONS
 {
-    . = 0x1000;  /* Load the kernel at 0x1000 */
-
+    . = 0x1000;
+    
+    kernel_start = .;
+    
     .text : {
-        *(.text)  /* All .text sections (code) */
-        *(.rodata*) 
-        *(.data)  
-        *(COMMON)  /* All COMMON sections (uninitialized global variables) */
-        *(.bss) 
+        *(.text)
+        *(.text.*)
     }
-
+    
+    .data : {
+        *(.data)
+        *(.data.*)
+    }
+    
+    .bss : {
+        *(.bss)
+        *(.bss.*)
+        *(COMMON)
+    }
+    
+    kernel_end = .;
 }

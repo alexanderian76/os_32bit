@@ -28,3 +28,22 @@ run2:
 	qemu-system-i386 -fda bin/main_floppy.img
 run:
 	qemu-system-i386 boot.bin 
+
+usb:
+	dd if=/dev/zero of=bin/main_floppy.img bs=512 count=4880
+	mkfs.fat -F 32 -n "NBOS" bin/main_floppy.img 
+
+	
+	nasm kernel.asm -f elf -o ./bin/kernel_entry.o
+	gcc -ffreestanding -m32 -fno-pie -g -c kernel.c -o bin/kernel.o
+
+	nasm zeroes.asm -f bin -o bin/zeroes.bin
+	ld -m elf_i386 -o bin/full_kernel.bin -T linker.ld  bin/kernel.o bin/kernel_entry.o  --oformat binary
+	
+
+	nasm -f bin -D KERNEL_SIZE=$(shell stat -c%s bin/full_kernel.bin) boot.asm -o bin/boot.bin
+
+	cat bin/boot.bin bin/full_kernel.bin bin/zeroes.bin  > bin/OS.bin
+	dd if=bin/OS.bin of=bin/main_floppy.img conv=notrunc 
+
+	qemu-system-i386 -hda bin/main_floppy.img

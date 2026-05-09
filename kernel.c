@@ -4,7 +4,7 @@ int VIDEO_MEMORY;
 // IDT and IDT descriptor
 struct idt_entry idt[256];
 struct idt_descriptor idt_desc;
-char b[10000000];
+
 extern uint32_t kernel_end;
 extern uint32_t page_tables_start;
 extern uint32_t page_tables_end;
@@ -44,7 +44,6 @@ void kernel_main()
     enable_cursor(0, 11);
     start();
 
-b[90000] = 'q';
     print("Initializing... \n");
 
     idt_desc.limit = sizeof(idt) - 1;

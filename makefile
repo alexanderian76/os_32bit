@@ -30,7 +30,7 @@ run:
 	qemu-system-i386 boot.bin 
 
 usb:
-	dd if=/dev/zero of=bin/main_floppy.img bs=512 count=4880
+	dd if=/dev/zero of=bin/main_floppy.img bs=512 count=2880
 	mkfs.fat -F 32 -n "NBOS" bin/main_floppy.img 
 
 	

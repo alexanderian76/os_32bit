@@ -40,6 +40,7 @@ void setup_paging_4mb_pages();
 void enable_pse();
 void clearScreen();
 
+int VIDEO_MEMORY = 0xB8000;
 
 #define VIDEO_GRAPHICS_ADDR 0xA0000
 #define SCREEN_WIDTH 320

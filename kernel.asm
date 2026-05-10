@@ -82,7 +82,7 @@ puts:
 	push edx
 	xor eax, eax
 	xor edx, edx
-	mov eax, 0x5c
+	mov eax, 0x5a
 .loop_puts:
 	mov bl, [esi + edx]
 	cmp bl, 0x0
@@ -179,4 +179,4 @@ print_alphabet:
 	jne .loop
     ret
 
-file_stage2_bin:        db 'TEST STRING qweqweqwr 777', 0
+file_stage2_bin:        db 'Hello from 32-bit operating system', 0

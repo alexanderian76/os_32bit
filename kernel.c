@@ -12,6 +12,7 @@ char *memory = (char *)&page_tables_start;
 // Main kernel function
 void kernel_main()
 {
+    print("Initializing... \n");
     /*  int i;
       for (i = 0; i < 1024; i++)
       {
@@ -38,13 +39,10 @@ void kernel_main()
     loadPageDirectory(page_directory);
     enablePaging();
 
-    VIDEO_MEMORY = 0xB8000;
     // Set up IDT
 
     enable_cursor(0, 11);
     start();
-
-    print("Initializing... \n");
 
     idt_desc.limit = sizeof(idt) - 1;
     idt_desc.base = (uint32_t)&idt;
@@ -64,9 +62,9 @@ void kernel_main()
 
     print("Kernel end at: ");
     print_hex((uint32_t)&kernel_end);
-    print(" ");
+    print("\n");
 
-    print("Table start: ");
+    print("Table start at: ");
     print_hex((uint32_t)&page_tables_start);
     print("\n");
 
@@ -80,7 +78,7 @@ void kernel_main()
     print_char(message[0]);
     print_char(message[1]);*/
 
-    uint32_t test_addr = 0x007fffff; //- (uint32_t)&page_tables_start; //только 128мб в qemu есть ограничение 0x80000000
+    uint32_t test_addr = 0x07fffff; //- (uint32_t)&page_tables_start; //только 128мб в qemu есть ограничение 0x80000000
     print("Testing page at: ");
     print_hex(test_addr);
     print_char('\n');

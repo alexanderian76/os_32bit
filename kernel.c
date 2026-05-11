@@ -217,7 +217,7 @@ void keyboard_handler()
         {
             clearScreen();
         }
-        else if (keyboard_map[(unsigned char)scancode] > 0 && keyboard_map[(unsigned char)scancode] != '\n' && keyboard_map[(unsigned char)scancode] != 'f')
+        else if (keyboard_map[(unsigned char)scancode] > 0 && keyboard_map[(unsigned char)scancode] != 'f')
         {
 
             /*   *(char*)VIDEO_MEMORY = keyboard_map[(unsigned char)scancode];
@@ -233,22 +233,19 @@ void keyboard_handler()
             *(char*)heap_end = keyboard_map[(unsigned char)scancode];
             heap_end += 1;
         }
-        else if (keyboard_map[(unsigned char)scancode] == '\n' && ((int)heap_end % 2 == 0) && (uint32_t)heap_end > (uint32_t)&page_tables_start)
+    /*    else if (keyboard_map[(unsigned char)scancode] == '\n' && ((int)heap_end % 2 == 0) && (uint32_t)heap_end > (uint32_t)&page_tables_start)
         {
-            /*  for(int i = 0; i < 0x00300000; i++) {
-                  memory += 1;
-                  *memory = '7';
-              }*/
+
             print_char(((char*)heap_end)[0] + ((char*)heap_end)[1] - 48);
             heap_end = heap_end - 2;
             // update_cursor(((VIDEO_MEMORY - 0xb8000) / 2) % 80, (VIDEO_MEMORY - 0xb8000) / 160);
             print_char(keyboard_map[(unsigned char)scancode]);
-        }
+        }*/
         else if (keyboard_map[(unsigned char)scancode] == 'f')
         {
             file_t *file;
-            
-            char path[10];
+            const int size = ((VIDEO_MEMORY - 0xb8000) / 2) % 80;
+            char path[size + 1];
 
   /*uint32_t esp, ebp, path_addr;
     asm volatile("mov %%esp, %0" : "=r"(esp));
@@ -282,18 +279,19 @@ void keyboard_handler()
         print("\n");
     }
 */
-print_hex((uint32_t)file);
+
+print_hex((uint32_t)path);
 print_char('\n');
-            heap_end = heap_end - 9;
-            for(int i = 0; i < 9; i++)
+            heap_end = heap_end - size;
+            for(int i = 0; i < size; i++)
             {
                 path[i] = *(char*)heap_end;
                 print_char(path[i]);
               //  path++;
                 heap_end++;
             }
-            path[10] = '\0';
-          //  *path = '\0';
+            //path[10] = '\0';
+            path[size] = '\0';
           //  path = path - 9;
            // print(path);
 

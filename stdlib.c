@@ -2,7 +2,7 @@
 #include "kern.h"
 
 // Простейший аллокатор памяти
-  // Начало кучи
+  // Текущее положение конца кучи
 uint32_t heap_end = (uint32_t)&heap_start;
 
 void *malloc(size_t size) {

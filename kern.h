@@ -1,3 +1,5 @@
+#ifndef KERN_H
+#define KERN_H
 
 #include <stdint.h>
 // IDT entry structure
@@ -29,8 +31,8 @@ void disable_cursor();
 //int posY = 1;
 
 
-uint32_t page_directory[1024] __attribute__((aligned(4096)));
-uint32_t first_page_table[1024] __attribute__((aligned(4096)));
+extern uint32_t page_directory[1024] __attribute__((aligned(4096)));
+extern uint32_t first_page_table[1024] __attribute__((aligned(4096)));
 
 extern void loadPageDirectory(unsigned int*);
 extern void enablePaging();
@@ -40,7 +42,7 @@ void setup_paging_4mb_pages();
 void enable_pse();
 void clearScreen();
 
-int VIDEO_MEMORY = 0xB8000;
+extern int VIDEO_MEMORY;
 
 #define VIDEO_GRAPHICS_ADDR 0xA0000
 #define SCREEN_WIDTH 320
@@ -48,3 +50,17 @@ int VIDEO_MEMORY = 0xB8000;
 
 // Функция для установки одного пикселя
 void put_pixel(int x, int y, unsigned char color);
+
+
+void test_vfs();
+
+
+extern uint32_t kernel_end;
+extern uint32_t page_tables_start;
+
+extern uint32_t heap_start;
+extern uint32_t heap_end;
+
+extern uint32_t stack_top;
+extern uint32_t stack_bottom;
+#endif

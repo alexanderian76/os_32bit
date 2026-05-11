@@ -1,6 +1,4 @@
-	 global _GLOBAL_OFFSET_TABLE_
- 
-_GLOBAL_OFFSET_TABLE_: dw 0x4000
+
 extern main
 
 section .text

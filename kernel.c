@@ -1,18 +1,25 @@
 #include "kern.h"
+#include "vfs.h"
 #include "keyboard_map.h"
-int VIDEO_MEMORY;
+int VIDEO_MEMORY = 0xB8000;
+uint32_t page_directory[1024] __attribute__((aligned(4096)));
+uint32_t first_page_table[1024] __attribute__((aligned(4096)));
 // IDT and IDT descriptor
 struct idt_entry idt[256];
 struct idt_descriptor idt_desc;
 
-extern uint32_t kernel_end;
-extern uint32_t page_tables_start;
-extern uint32_t page_tables_end;
-char *memory = (char *)&page_tables_start;
+
+
+//char *memory = (char *)&page_tables_start;
 // Main kernel function
 void kernel_main()
 {
     print("Initializing... \n");
+ asm volatile(
+        "mov %%esp, %0\n"
+        "mov %%ebp, %0\n"
+        : : "r"(stack_top + 65536)
+    );
     /*  int i;
       for (i = 0; i < 1024; i++)
       {
@@ -68,9 +75,9 @@ void kernel_main()
     print_hex((uint32_t)&page_tables_start);
     print("\n");
 
-    print("Table end at: ");
-    print_hex((uint32_t)&page_tables_end);
-    print("\n");
+    // print("Table end at: ");
+    //  print_hex((uint32_t)&page_tables_end);
+    // print("\n");
 
     /*char *message = (char *)0x200000; // последний адрес (всего смаплено 4 мегабайта)
     message[0] = 'H';
@@ -105,6 +112,22 @@ void kernel_main()
         print("Memory NOT writable! Page fault?\n");
     }
 
+    if (vfs_init() != 0)
+    {
+        print("VFS initialization failed!\n");
+        while (1)
+            ;
+    }
+
+    test_vfs();
+
+   // uint32_t stack_ptr;
+   // asm volatile("mov %%esp, %0" : "=r"(stack_ptr));
+    
+    print("Stack pointer at: ");
+    print_hex((uint32_t)stack_top);
+    print("\n");
+
     print("System ready. Type something...\n");
 
     /* for (int i = 0; i < 100; i++)
@@ -117,61 +140,180 @@ void kernel_main()
         ;
 }
 
+void test_vfs()
+{
+    file_t *file;
+
+    print("\n=== Testing VFS ===\n");
+
+    // Создаем и открываем файл
+    if (vfs_open("/test.txt", O_CREAT | O_RDWR, &file) == 0)
+    {
+        // Пишем в файл
+        const char *data = "Hello, VFS!";
+        vfs_write(file, data, 13);
+
+        // Перемещаемся в начало
+        vfs_lseek(file, 0, 0);
+
+        // Читаем обратно
+        char buf[100];
+        int bytes = vfs_read(file, buf, 100);
+        buf[bytes] = '\0';
+
+        print("Written and read: ");
+        print(buf);
+        print("\n");
+
+        vfs_close(file);
+    }
+
+    // Создаем директорию
+    if (vfs_mkdir("/testdir") == 0)
+    {
+        print("Directory /testdir created\n");
+
+        // Создаем файл в новой директории
+        if (vfs_open("/testdir/hello.txt", O_CREAT | O_RDWR, &file) == 0)
+        {
+            const char *msg = "Hello from subdirectory!";
+            vfs_write(file, msg, 24);
+            vfs_close(file);
+            print("File created in subdirectory\n");
+        }
+    }
+
+    print("=== VFS test complete ===\n");
+}
+
 // Read a byte from a port
 static inline uint8_t inb(uint16_t port)
 {
     uint8_t ret;
-    asm volatile("inb %1, %0" : "=a"(ret) : "Nd"(port));
+    __asm__ volatile("inb %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
 }
 
 // Write a byte to a port
 static inline void outb(uint16_t port, uint8_t value)
 {
-    asm volatile("outb %0, %1" : : "a"(value), "Nd"(port));
+    __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
 }
 
 // Keyboard interrupt handler
 void keyboard_handler()
 {
+        
     // Read the scancode from the keyboard data port (0x60)
     uint8_t scancode = inb(0x60);
     uint8_t statusCode = inb(0x64);
 
     // Print the scancode to the screen (for debugging)
     //  print_char(statusCode);
-    if (keyboard_map[(unsigned char)scancode] == 0x8)
-    {
-        clearScreen();
-    }
-    else if (scancode < 128 && keyboard_map[(unsigned char)scancode] > 0 && keyboard_map[(unsigned char)scancode] != '\n')
+    if (scancode < 128)
     {
 
-        /*   *(char*)VIDEO_MEMORY = keyboard_map[(unsigned char)scancode];
-                               // Print the scancode
-           VIDEO_MEMORY += 0x1; // Move to the next character position
-           *(char*)VIDEO_MEMORY = 0x5;
-           VIDEO_MEMORY += 0x1;*/
+        if (keyboard_map[(unsigned char)scancode] == 0x8)
+        {
+            clearScreen();
+        }
+        else if (keyboard_map[(unsigned char)scancode] > 0 && keyboard_map[(unsigned char)scancode] != '\n' && keyboard_map[(unsigned char)scancode] != 'f')
+        {
 
-        print_char(keyboard_map[(unsigned char)scancode]);
-        // Send End of Interrupt (EOI) to the PIC
-        update_cursor(((VIDEO_MEMORY - 0xb8000) / 2) % 80, (VIDEO_MEMORY - 0xb8000) / 160);
-        memory += 1;
-        *memory = keyboard_map[(unsigned char)scancode];
-    }
-    else if (keyboard_map[(unsigned char)scancode] == '\n' && memory >= 2 && ((int)memory % 2 == 0) && memory > &page_tables_start)
-    {
-        /*  for(int i = 0; i < 0x00300000; i++) {
-              memory += 1;
-              *memory = '7';
-          }*/
-        print_char(memory[0] + memory[-1] - 48);
-        memory = memory - 2;
-        update_cursor(((VIDEO_MEMORY - 0xb8000) / 2) % 80, (VIDEO_MEMORY - 0xb8000) / 160);
-        print_char(keyboard_map[(unsigned char)scancode]);
-    }
+            /*   *(char*)VIDEO_MEMORY = keyboard_map[(unsigned char)scancode];
+                                   // Print the scancode
+               VIDEO_MEMORY += 0x1; // Move to the next character position
+               *(char*)VIDEO_MEMORY = 0x5;
+               VIDEO_MEMORY += 0x1;*/
 
+            print_char(keyboard_map[(unsigned char)scancode]);
+            // Send End of Interrupt (EOI) to the PIC
+            // update_cursor(((VIDEO_MEMORY - 0xb8000) / 2) % 80, (VIDEO_MEMORY - 0xb8000) / 160);
+            
+            *(char*)heap_end = keyboard_map[(unsigned char)scancode];
+            heap_end += 1;
+        }
+        else if (keyboard_map[(unsigned char)scancode] == '\n' && ((int)heap_end % 2 == 0) && (uint32_t)heap_end > (uint32_t)&page_tables_start)
+        {
+            /*  for(int i = 0; i < 0x00300000; i++) {
+                  memory += 1;
+                  *memory = '7';
+              }*/
+            print_char(((char*)heap_end)[0] + ((char*)heap_end)[1] - 48);
+            heap_end = heap_end - 2;
+            // update_cursor(((VIDEO_MEMORY - 0xb8000) / 2) % 80, (VIDEO_MEMORY - 0xb8000) / 160);
+            print_char(keyboard_map[(unsigned char)scancode]);
+        }
+        else if (keyboard_map[(unsigned char)scancode] == 'f')
+        {
+            file_t *file;
+            
+            char path[10];
+
+  /*uint32_t esp, ebp, path_addr;
+    asm volatile("mov %%esp, %0" : "=r"(esp));
+    asm volatile("mov %%ebp, %0" : "=r"(ebp));
+    path_addr = (uint32_t)&path;
+    
+    print("ESP: ");
+    print_hex(esp);
+    print("\nEBP: ");
+    print_hex(ebp);
+    print("\n&path: ");
+    print_hex(path_addr);
+    print("\n");
+    print("path points to: ");
+    print_hex((uint32_t)path);
+    print("\n");
+    
+    // Разница между stack frame и переменной
+    print("Offset from ESP: ");
+    print_hex(path_addr - esp);
+    print("\n");
+    
+    // Проверка, что path находится на стеке
+    if (path_addr > 0x80000 && path_addr < 0xA0000) {
+        print("✓ path is on stack (normal)\n");
+    } else if (path_addr > 0x100000 && path_addr < 0x200000) {
+        print("⚠ path is in kernel data section\n");
+    } else {
+        print("✗ path is at strange address: ");
+        print_hex(path_addr);
+        print("\n");
+    }
+*/
+print_hex((uint32_t)file);
+print_char('\n');
+            heap_end = heap_end - 9;
+            for(int i = 0; i < 9; i++)
+            {
+                path[i] = *(char*)heap_end;
+                print_char(path[i]);
+              //  path++;
+                heap_end++;
+            }
+            path[10] = '\0';
+          //  *path = '\0';
+          //  path = path - 9;
+           // print(path);
+
+            // Создаем и открываем файл
+            if (vfs_open(path, O_RDWR, &file) == 0)
+            {
+                vfs_lseek(file, 0, 0);
+                char buf[100];
+                int bytes = vfs_read(file, buf, 100);
+                buf[bytes] = '\0';
+
+                print(buf);
+                print("\n");
+
+                vfs_close(file);
+            }
+        }
+    }
     outb(0x20, 0x20);
+       
     asm("sti");
 }
 
@@ -331,7 +473,7 @@ void enable_pse()
 void setup_paging_4mb_pages()
 {
     // Page directory entries для 4MB страниц
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 3; i++)
     {
         // Каждая запись покрывает 4MB
         // Физический адрес = i * 4MB

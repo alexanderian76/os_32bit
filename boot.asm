@@ -1,6 +1,13 @@
 [org 0x7c00]                        
 KERNEL_LOCATION equ 0x1000
-                                    
+
+cli
+xor ax, ax
+mov ds, ax
+mov es, ax
+mov ss, ax
+mov sp, 0x7c00
+sti                             
 
 mov [BOOT_DISK], dl                 
 
@@ -38,7 +45,7 @@ jmp .read_ok
 .use_chs:
 
 mov bx, KERNEL_LOCATION
-mov dh, 40 ; количество секторов, загружаемых с диска
+mov dh, 60 ; количество секторов, загружаемых с диска
 
 mov ah, 0x02
 mov al, dh 
@@ -74,7 +81,7 @@ align 4
 DAPACK:
     db 0x10        ; размер структуры (16 байт)
     db 0           ; зарезервировано
-    db 40          ; количество секторов для чтения (как в вашем коде)
+    db 50          ; количество секторов для чтения (как в вашем коде)
     db 0           ; зарезервировано
     dw KERNEL_LOCATION  ; смещение буфера
     dw 0           ; сегмент буфера (0)
@@ -116,13 +123,7 @@ start_protected_mode:
 
 section .text
 start:
-    ; 1. Перемещаем ядро на его финальный адрес 0x100000
-    mov esi, 0x1000       ; Откуда копируем (физический адрес загрузки)
-    mov edi, 0x100000     ; Куда копируем (виртуальный адрес ядра)
-        
-    mov ecx, KERNEL_SIZE     ; Размер ядра в байтах
-    cld
-    rep movsb
+
 
 
     mov ax, DATA_SEG
@@ -135,9 +136,17 @@ start:
 	mov ebp, 0x90000		; 32 bit stack base pointer
 	mov esp, ebp
 
+        ; 1. Перемещаем ядро на его финальный адрес 0x100000
+    mov esi, 0x1000       ; Откуда копируем (физический адрес загрузки)
+    mov edi, 0x100000     ; Куда копируем (виртуальный адрес ядра)
+        
+    mov ecx, KERNEL_SIZE     ; Размер ядра в байтах
+    cld
+    rep movsb
+
     ; 3. Прыгаем на перемещенную функцию kernel_main
     jmp 0x100000  ; Переход по абсолютному адресу 0x100000 + смещение kernel_main
-
+    
 
 
  ;   jmp KERNEL_LOCATION

@@ -303,8 +303,8 @@ void keyboard_handler()
             for (int i = 0; i < size; i++)
             {
                 path[i] = *(char *)heap_end;
-                //print_char(path[i]);
-                //  path++;
+                // print_char(path[i]);
+                //   path++;
                 heap_end++;
             }
             // path[10] = '\0';
@@ -325,14 +325,11 @@ void keyboard_handler()
 
                 vfs_close(file);
             }
-   
         }
     }
 
-     outb(0x20, 0x20);
+    outb(0x20, 0x20);
 
-
-    asm("sti");
 }
 
 void enable_cursor(uint8_t cursor_start, uint8_t cursor_end)
@@ -440,7 +437,6 @@ void clearScreen()
         VIDEO_MEMORY -= 0x1;
     }
     *(char *)VIDEO_MEMORY = 0x0;
-
 }
 
 void print_hex(uint32_t num)

@@ -177,4 +177,35 @@ print_alphabet:
 	jne .loop
     ret
 
+
+
+section .text
+global keyboard_handler_wrapper
+extern keyboard_handler
+
+keyboard_handler_wrapper:
+    ; Сохраняем все регистры
+    pusha
+    push ds
+    push es
+    push fs
+    push gs
+    
+    ; Устанавливаем сегмент данных
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    
+    ; Вызываем C-функцию
+    call keyboard_handler
+    
+    ; Восстанавливаем регистры
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    popa
+    
+    iret
+
 file_stage2_bin:        db 'Hello from 32-bit operating system', 0

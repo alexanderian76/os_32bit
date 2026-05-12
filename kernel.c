@@ -1,6 +1,7 @@
 #include "kern.h"
 #include "vfs.h"
 #include "keyboard_map.h"
+#include <stddef.h>
 int VIDEO_MEMORY = 0xB8000;
 uint32_t page_directory[1024] __attribute__((aligned(4096)));
 uint32_t first_page_table[1024] __attribute__((aligned(4096)));
@@ -8,18 +9,38 @@ uint32_t first_page_table[1024] __attribute__((aligned(4096)));
 struct idt_entry idt[256];
 struct idt_descriptor idt_desc;
 
-
-
-//char *memory = (char *)&page_tables_start;
-// Main kernel function
+// char *memory = (char *)&page_tables_start;
+//  Main kernel function
 void kernel_main()
 {
+    print("Stack bottom: ");
+    print_hex((uint32_t)&stack_bottom);
+    print("\nStack top: ");
+    print_hex((uint32_t)&stack_top);
+    print("\nStack size: ");
+    print_hex(get_stack_size());
+    print(" bytes\n");
+    print("Stack used: ");
+    print_hex(get_stack_used());
+    print(" bytes\n");
+
+    uint32_t esp;
+    asm volatile("mov %%esp, %0" : "=r"(esp));
+    print("Current ESP: ");
+    print_hex(esp);
+    print("\n");
+
+    if (is_stack_address(esp))
+    {
+        print("✓ ESP is within stack bounds\n");
+    }
+    else
+    {
+        print("✗ ESP is OUTSIDE stack bounds!\n");
+    }
+
     print("Initializing... \n");
- asm volatile(
-        "mov %%esp, %0\n"
-        "mov %%ebp, %0\n"
-        : : "r"(stack_top + 65536)
-    );
+
     /*  int i;
       for (i = 0; i < 1024; i++)
       {
@@ -49,14 +70,14 @@ void kernel_main()
     // Set up IDT
 
     enable_cursor(0, 11);
-    start();
+    //  start();
 
     idt_desc.limit = sizeof(idt) - 1;
     idt_desc.base = (uint32_t)&idt;
 
     // Set up keyboard interrupt (IRQ1 -> INT 0x21)
-    idt_set_gate(0x21, (uint32_t)keyboard_handler, 0x08, 0x8E);
-    idt_set_gate(0x0E, (uint32_t)page_fault_handler, 0x08, 0x8E);
+    idt_set_gate(0x21, (uint32_t)keyboard_handler_wrapper, 0x08, 0x8E);
+    idt_set_gate(0x0E, (uint32_t)page_fault_handler, 0x08, 0x8F);
 
     // Load IDT
     asm volatile("lidt %0" : : "m"(idt_desc));
@@ -121,12 +142,8 @@ void kernel_main()
 
     test_vfs();
 
-   // uint32_t stack_ptr;
-   // asm volatile("mov %%esp, %0" : "=r"(stack_ptr));
-    
-    print("Stack pointer at: ");
-    print_hex((uint32_t)stack_top);
-    print("\n");
+    // uint32_t stack_ptr;
+    // asm volatile("mov %%esp, %0" : "=r"(stack_ptr));
 
     print("System ready. Type something...\n");
 
@@ -203,7 +220,7 @@ static inline void outb(uint16_t port, uint8_t value)
 // Keyboard interrupt handler
 void keyboard_handler()
 {
-        
+
     // Read the scancode from the keyboard data port (0x60)
     uint8_t scancode = inb(0x60);
     uint8_t statusCode = inb(0x64);
@@ -229,71 +246,71 @@ void keyboard_handler()
             print_char(keyboard_map[(unsigned char)scancode]);
             // Send End of Interrupt (EOI) to the PIC
             // update_cursor(((VIDEO_MEMORY - 0xb8000) / 2) % 80, (VIDEO_MEMORY - 0xb8000) / 160);
-            
-            *(char*)heap_end = keyboard_map[(unsigned char)scancode];
+
+            *(char *)heap_end = keyboard_map[(unsigned char)scancode];
             heap_end += 1;
         }
-    /*    else if (keyboard_map[(unsigned char)scancode] == '\n' && ((int)heap_end % 2 == 0) && (uint32_t)heap_end > (uint32_t)&page_tables_start)
-        {
+        /*    else if (keyboard_map[(unsigned char)scancode] == '\n' && ((int)heap_end % 2 == 0) && (uint32_t)heap_end > (uint32_t)&page_tables_start)
+            {
 
-            print_char(((char*)heap_end)[0] + ((char*)heap_end)[1] - 48);
-            heap_end = heap_end - 2;
-            // update_cursor(((VIDEO_MEMORY - 0xb8000) / 2) % 80, (VIDEO_MEMORY - 0xb8000) / 160);
-            print_char(keyboard_map[(unsigned char)scancode]);
-        }*/
+                print_char(((char*)heap_end)[0] + ((char*)heap_end)[1] - 48);
+                heap_end = heap_end - 2;
+                // update_cursor(((VIDEO_MEMORY - 0xb8000) / 2) % 80, (VIDEO_MEMORY - 0xb8000) / 160);
+                print_char(keyboard_map[(unsigned char)scancode]);
+            }*/
         else if (keyboard_map[(unsigned char)scancode] == 'f')
         {
             file_t *file;
             const int size = ((VIDEO_MEMORY - 0xb8000) / 2) % 80;
             char path[size + 1];
 
-  /*uint32_t esp, ebp, path_addr;
-    asm volatile("mov %%esp, %0" : "=r"(esp));
-    asm volatile("mov %%ebp, %0" : "=r"(ebp));
-    path_addr = (uint32_t)&path;
-    
-    print("ESP: ");
-    print_hex(esp);
-    print("\nEBP: ");
-    print_hex(ebp);
-    print("\n&path: ");
-    print_hex(path_addr);
-    print("\n");
-    print("path points to: ");
-    print_hex((uint32_t)path);
-    print("\n");
-    
-    // Разница между stack frame и переменной
-    print("Offset from ESP: ");
-    print_hex(path_addr - esp);
-    print("\n");
-    
-    // Проверка, что path находится на стеке
-    if (path_addr > 0x80000 && path_addr < 0xA0000) {
-        print("✓ path is on stack (normal)\n");
-    } else if (path_addr > 0x100000 && path_addr < 0x200000) {
-        print("⚠ path is in kernel data section\n");
-    } else {
-        print("✗ path is at strange address: ");
-        print_hex(path_addr);
-        print("\n");
-    }
-*/
+            /*uint32_t esp, ebp, path_addr;
+              asm volatile("mov %%esp, %0" : "=r"(esp));
+              asm volatile("mov %%ebp, %0" : "=r"(ebp));
+              path_addr = (uint32_t)&path;
 
-print_hex((uint32_t)path);
-print_char('\n');
+              print("ESP: ");
+              print_hex(esp);
+              print("\nEBP: ");
+              print_hex(ebp);
+              print("\n&path: ");
+              print_hex(path_addr);
+              print("\n");
+              print("path points to: ");
+              print_hex((uint32_t)path);
+              print("\n");
+
+              // Разница между stack frame и переменной
+              print("Offset from ESP: ");
+              print_hex(path_addr - esp);
+              print("\n");
+
+              // Проверка, что path находится на стеке
+              if (path_addr > 0x80000 && path_addr < 0xA0000) {
+                  print("✓ path is on stack (normal)\n");
+              } else if (path_addr > 0x100000 && path_addr < 0x200000) {
+                  print("⚠ path is in kernel data section\n");
+              } else {
+                  print("✗ path is at strange address: ");
+                  print_hex(path_addr);
+                  print("\n");
+              }
+          */
+
+            print_hex((uint32_t)&file);
+            print_char('\n');
             heap_end = heap_end - size;
-            for(int i = 0; i < size; i++)
+            for (int i = 0; i < size; i++)
             {
-                path[i] = *(char*)heap_end;
-                print_char(path[i]);
-              //  path++;
+                path[i] = *(char *)heap_end;
+                //print_char(path[i]);
+                //  path++;
                 heap_end++;
             }
-            //path[10] = '\0';
+            // path[10] = '\0';
             path[size] = '\0';
-          //  path = path - 9;
-           // print(path);
+            //  path = path - 9;
+            // print(path);
 
             // Создаем и открываем файл
             if (vfs_open(path, O_RDWR, &file) == 0)
@@ -308,10 +325,13 @@ print_char('\n');
 
                 vfs_close(file);
             }
+   
         }
     }
-    outb(0x20, 0x20);
-       
+
+     outb(0x20, 0x20);
+
+
     asm("sti");
 }
 
@@ -420,6 +440,7 @@ void clearScreen()
         VIDEO_MEMORY -= 0x1;
     }
     *(char *)VIDEO_MEMORY = 0x0;
+
 }
 
 void print_hex(uint32_t num)
@@ -477,6 +498,29 @@ void setup_paging_4mb_pages()
         // Физический адрес = i * 4MB
         page_directory[i] = (i * 4 * 1024 * 1024) | 0x83; // Present, RW, Supervisor, 4MB page
     }
+}
+
+int is_stack_address(uint32_t addr)
+{
+    return (addr >= (uint32_t)&stack_bottom && addr <= (uint32_t)&stack_top);
+}
+
+uint32_t get_stack_size(void)
+{
+    return (uint32_t)&stack_top - (uint32_t)&stack_bottom;
+}
+
+uint32_t get_stack_used(void)
+{
+    uint32_t esp;
+    asm volatile("mov %%esp, %0" : "=r"(esp));
+
+    if (esp < (uint32_t)&stack_bottom)
+    {
+        return 0; // Стек переполнен!
+    }
+
+    return (uint32_t)&stack_top - esp;
 }
 
 // Функция для установки одного пикселя

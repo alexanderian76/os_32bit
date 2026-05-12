@@ -19,7 +19,8 @@ struct idt_descriptor {
 
 void idt_set_gate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags);
 void remap_pic();
-void keyboard_handler();
+extern void keyboard_handler();
+extern void keyboard_handler_wrapper();
 extern void start();
 void enable_cursor(uint8_t cursor_start, uint8_t cursor_end);
 void print_hex(uint32_t);
@@ -36,6 +37,7 @@ extern uint32_t first_page_table[1024] __attribute__((aligned(4096)));
 
 extern void loadPageDirectory(unsigned int*);
 extern void enablePaging();
+extern void kernel_main();
 
 void page_fault_handler();
 void setup_paging_4mb_pages();
@@ -61,6 +63,17 @@ extern uint32_t page_tables_start;
 extern uint32_t heap_start;
 extern uint32_t heap_end;
 
-extern uint32_t stack_top;
-extern uint32_t stack_bottom;
+
+
+
+
+extern char stack_bottom[];
+extern char stack_top[];
+
+int is_stack_address(uint32_t addr);
+
+uint32_t get_stack_size(void);
+
+uint32_t get_stack_used(void);
+
 #endif

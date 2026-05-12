@@ -16,10 +16,6 @@ SECTIONS
 
     kernel_end = .;
 
-     . = ALIGN(4096);
-    stack_bottom = .;
-    . += 65536;      /* 64KB стек */
-    stack_top = .;
 
      . = ALIGN(4096);
     page_tables_start = .;

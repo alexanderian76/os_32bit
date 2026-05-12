@@ -10,7 +10,7 @@ section .bss
 align 16
 
 stack_bottom:
-    resb 2048      ; 64KB стек
+    resb 4096      ; 64KB стек
 stack_top:
 
 section .text

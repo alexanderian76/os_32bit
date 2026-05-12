@@ -147,6 +147,10 @@ void kernel_main()
 
     print("System ready. Type something...\n");
 
+    print("Stack used: ");
+    print_hex(get_stack_used());
+    print(" bytes\n");
+
     /* for (int i = 0; i < 100; i++)
      {
          put_pixel(i, i, 4);
@@ -297,8 +301,9 @@ void keyboard_handler()
               }
           */
 
-            print_hex((uint32_t)&file);
+            print_hex(heap_end);
             print_char('\n');
+            
             heap_end = heap_end - size;
             for (int i = 0; i < size; i++)
             {
@@ -309,6 +314,7 @@ void keyboard_handler()
             }
             // path[10] = '\0';
             path[size] = '\0';
+            heap_end = heap_end - size;
             //  path = path - 9;
             // print(path);
 

@@ -41,9 +41,10 @@ usb:
 	gcc -ffreestanding -m32 -fno-pie -fstack-protector-strong -g -c vfs.c -o bin/vfs.o
 	gcc -ffreestanding -m32 -fno-pie -fstack-protector-strong -g -c string.c -o bin/string.o
 	gcc -ffreestanding -m32 -fno-pie -fstack-protector-strong -g -c stdlib.c -o bin/stdlib.o
+	gcc -ffreestanding -m32 -fno-pie -fstack-protector-strong -g -c hello_screen.c -o bin/hello_screen.o
 
 	nasm zeroes.asm -f bin -o bin/zeroes.bin
-	ld -m elf_i386 -o bin/full_kernel.bin -T linker.ld bin/kernel_entry_true.o bin/kernel.o bin/kernel_entry.o bin/vfs.o bin/stdlib.o bin/string.o --oformat binary
+	ld -m elf_i386 -o bin/full_kernel.bin -T linker.ld bin/kernel_entry_true.o bin/kernel.o bin/kernel_entry.o bin/hello_screen.o bin/vfs.o bin/stdlib.o bin/string.o --oformat binary
 	
 
 	nasm -f bin -D KERNEL_SIZE=$(shell stat -c%s bin/full_kernel.bin) boot.asm -o bin/boot.bin

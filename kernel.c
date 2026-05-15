@@ -2,6 +2,7 @@
 #include "vfs.h"
 #include "keyboard_map.h"
 #include <stddef.h>
+#include "hello_screen.h"
 int VIDEO_MEMORY = 0xB8000;
 uint32_t page_directory[1024] __attribute__((aligned(4096)));
 uint32_t first_page_table[1024] __attribute__((aligned(4096)));
@@ -13,6 +14,9 @@ struct idt_descriptor idt_desc;
 //  Main kernel function
 void kernel_main()
 {
+    helloScreen();
+    wait_seconds(10);
+    clearScreen();
     print("Stack bottom: ");
     print_hex((uint32_t)&stack_bottom);
     print("\nStack top: ");
@@ -85,7 +89,7 @@ void kernel_main()
     // Remap PIC
     remap_pic();
 
-    // Enable interrupts
+        // Enable interrupts
     asm volatile("sti");
 
     print("Kernel end at: ");
@@ -132,6 +136,8 @@ void kernel_main()
     {
         print("Memory NOT writable! Page fault?\n");
     }
+    wait_seconds(10);
+    clearScreen();
 
     if (vfs_init() != 0)
     {
@@ -145,11 +151,14 @@ void kernel_main()
     // uint32_t stack_ptr;
     // asm volatile("mov %%esp, %0" : "=r"(stack_ptr));
 
-    print("System ready. Type something...\n");
+    wait_seconds(10);
+    clearScreen();
 
+    reset_keyboard();
     print("Stack used: ");
     print_hex(get_stack_used());
     print(" bytes\n");
+    print("System ready. Type something...\n");
 
     /* for (int i = 0; i < 100; i++)
      {
@@ -157,6 +166,7 @@ void kernel_main()
      }
          */
     // Main loop
+
     while (1)
         ;
 }
@@ -303,7 +313,7 @@ void keyboard_handler()
 
             print_hex(heap_end);
             print_char('\n');
-            
+
             heap_end = heap_end - size;
             for (int i = 0; i < size; i++)
             {
@@ -335,7 +345,6 @@ void keyboard_handler()
     }
 
     outb(0x20, 0x20);
-
 }
 
 void enable_cursor(uint8_t cursor_start, uint8_t cursor_end)
@@ -420,6 +429,10 @@ void print_char(char ch)
         // move_cursor(posX, posY);
         update_cursor(posX, posY);
     }
+    else
+    {
+        clearScreen();
+    }
 }
 
 void print(char *str)
@@ -429,6 +442,17 @@ void print(char *str)
         print_char(*str);
         *str++;
     }
+}
+
+void reset_keyboard()
+{
+    // Сброс контроллера клавиатуры
+    outb(0x64, 0xFF); // команда сброса
+    // Подождать немного
+    for (int i = 0; i < 10000; i++)
+        __asm__("nop");
+    // Прочитать ответ
+    uint8_t resp = inb(0x60);
 }
 
 void clearScreen()

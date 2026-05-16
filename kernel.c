@@ -6,6 +6,7 @@
 #include "io.h"
 #include "pci.h"
 #include "stdlib.h"
+#include "ata.h"
 
 int VIDEO_MEMORY = 0xB8000;
 uint32_t page_directory[1024] __attribute__((aligned(4096)));
@@ -269,8 +270,17 @@ void keyboard_handler()
     //  print_char(statusCode);
     if (scancode < 128)
     {
-
-        if (keyboard_map[(unsigned char)scancode] == 0x8)
+        if(keyboard_map[(unsigned char)scancode] == 'w')
+        {
+            ata_write_sector(2000, "qwe");
+        }
+        else if(keyboard_map[(unsigned char)scancode] == 'q')
+        {
+            char *tmp = (char*)malloc(sizeof(char) * 10);
+            ata_read_sector(2000, tmp);
+            print(tmp);
+        }
+        else if (keyboard_map[(unsigned char)scancode] == 0x8)
         {
             clearScreen();
         }

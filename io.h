@@ -3,24 +3,50 @@
 
 #include "types.h"
 
-static inline void outb(uint16_t port, uint8_t value) {
-    __asm__ volatile ("outb %0, %1" : : "a"(value), "Nd"(port));
+static inline void outb(uint16_t port, uint8_t value)
+{
+    __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
 }
 
-static inline uint8_t inb(uint16_t port) {
+static inline uint8_t inb(uint16_t port)
+{
     uint8_t ret;
-    __asm__ volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
+    __asm__ volatile("inb %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
 }
 
-static inline void outl(uint16_t port, uint32_t value) {
-    __asm__ volatile ("outl %0, %1" : : "a"(value), "Nd"(port));
+static inline void outl(uint16_t port, uint32_t value)
+{
+    __asm__ volatile("outl %0, %1" : : "a"(value), "Nd"(port));
 }
 
-static inline uint32_t inl(uint16_t port) {
+static inline uint32_t inl(uint16_t port)
+{
     uint32_t ret;
-    __asm__ volatile ("inl %1, %0" : "=a"(ret) : "Nd"(port));
+    __asm__ volatile("inl %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
+}
+
+// Функция для чтения 16-битного слова из порта ввода-вывода
+static inline uint16_t inw(uint16_t port)
+{
+    uint16_t result;
+    __asm__ volatile(
+        "inw %1, %0"   // Читаем слово (16 бит) из порта
+        : "=a"(result) // Результат в AX (возвращаем result)
+        : "Nd"(port)   // Порт (16 бит) передаём как аргумент
+    );
+    return result;
+}
+
+// Функция для записи 16-битного слова в порт ввода-вывода
+static inline void outw(uint16_t port, uint16_t value) {
+    __asm__ volatile (
+        "outw %0, %1"          // Записываем слово (16 бит) в порт
+        :                      // Нет выходных операндов
+        : "a"(value),          // value в регистре AX
+          "Nd"(port)           // port - непосредственное значение или в DX
+    );
 }
 
 #endif

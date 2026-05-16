@@ -3,6 +3,10 @@
 #include "keyboard_map.h"
 #include <stddef.h>
 #include "hello_screen.h"
+#include "io.h"
+#include "pci.h"
+#include "stdlib.h"
+
 int VIDEO_MEMORY = 0xB8000;
 uint32_t page_directory[1024] __attribute__((aligned(4096)));
 uint32_t first_page_table[1024] __attribute__((aligned(4096)));
@@ -15,8 +19,8 @@ struct idt_descriptor idt_desc;
 void kernel_main()
 {
     helloScreen();
-    wait_seconds(10);
-    clearScreen();
+    //  wait_seconds(10);
+    //    clearScreen();
     print("Stack bottom: ");
     print_hex((uint32_t)&stack_bottom);
     print("\nStack top: ");
@@ -89,7 +93,7 @@ void kernel_main()
     // Remap PIC
     remap_pic();
 
-        // Enable interrupts
+    // Enable interrupts
     asm volatile("sti");
 
     print("Kernel end at: ");
@@ -136,8 +140,8 @@ void kernel_main()
     {
         print("Memory NOT writable! Page fault?\n");
     }
-    wait_seconds(10);
-    clearScreen();
+    //  wait_seconds(10);
+    //  clearScreen();
 
     if (vfs_init() != 0)
     {
@@ -151,8 +155,8 @@ void kernel_main()
     // uint32_t stack_ptr;
     // asm volatile("mov %%esp, %0" : "=r"(stack_ptr));
 
-    wait_seconds(10);
-    clearScreen();
+    //  wait_seconds(10);
+    //  clearScreen();
 
     reset_keyboard();
     print("Stack used: ");
@@ -167,8 +171,30 @@ void kernel_main()
          */
     // Main loop
 
+     clearScreen();
+    // pci_init();
+    pci_device_t *dev = (pci_device_t *)malloc(sizeof(pci_device_t));
+    //    heap_end += sizeof(pci_device_t);
+    pci_find_ehci(dev);
+    print_hex((uint32_t)dev);
+    print_char('\n');
+
+    //  mm_init();
+    // pci_init();
+
+    // Поиск и инициализация EHCI
+    // print("\n=== EHCI Initialization ===\n");
+    // if (ehci_init_auto()) {
+    //     print("EHCI: Successfully initialized!\n");
+    // } else {
+    //     print("EHCI: Failed to initialize!\n");
+    // }
+    //  pci_dump_device(dev);
     while (1)
-        ;
+    {
+        // ehci_poll();
+        // wait_seconds(1);
+    }
 }
 
 void test_vfs()
@@ -218,7 +244,7 @@ void test_vfs()
 }
 
 // Read a byte from a port
-static inline uint8_t inb(uint16_t port)
+/*static inline uint8_t inb(uint16_t port)
 {
     uint8_t ret;
     __asm__ volatile("inb %1, %0" : "=a"(ret) : "Nd"(port));
@@ -230,7 +256,7 @@ static inline void outb(uint16_t port, uint8_t value)
 {
     __asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port));
 }
-
+*/
 // Keyboard interrupt handler
 void keyboard_handler()
 {
@@ -405,7 +431,7 @@ void remap_pic()
 
 void print_char(char ch)
 {
-    if (VIDEO_MEMORY < 0xbffff)
+    if (VIDEO_MEMORY < 0xbffff && (VIDEO_MEMORY - 0xb8000) / 160 < 25)
     {
         if (ch == '\n')
         {
@@ -421,6 +447,11 @@ void print_char(char ch)
         int posX = ((VIDEO_MEMORY - 0xb8000) / 2) % 80;
         int posY = (VIDEO_MEMORY - 0xb8000) / 160;
 
+        if (posY >= 25)
+        {
+            clearScreen();
+            return;
+        }
         if (posX >= 80)
         {
             posY = (VIDEO_MEMORY - 0xb8000) / 160; //(posY + 1);
@@ -518,7 +549,7 @@ void enable_pse()
 void setup_paging_4mb_pages()
 {
     // Page directory entries для 4MB страниц
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 1024; i++)
     {
         // Каждая запись покрывает 4MB
         // Физический адрес = i * 4MB

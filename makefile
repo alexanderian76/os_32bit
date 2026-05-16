@@ -42,9 +42,11 @@ usb:
 	gcc -ffreestanding -m32 -fno-pie -fstack-protector-strong -g -c string.c -o bin/string.o
 	gcc -ffreestanding -m32 -fno-pie -fstack-protector-strong -g -c stdlib.c -o bin/stdlib.o
 	gcc -ffreestanding -m32 -fno-pie -fstack-protector-strong -g -c hello_screen.c -o bin/hello_screen.o
+	gcc -ffreestanding -m32 -fno-pie -fstack-protector-strong -g -c pci.c -o bin/pci.o
+
 
 	nasm zeroes.asm -f bin -o bin/zeroes.bin
-	ld -m elf_i386 -o bin/full_kernel.bin -T linker.ld bin/kernel_entry_true.o bin/kernel.o bin/kernel_entry.o bin/hello_screen.o bin/vfs.o bin/stdlib.o bin/string.o --oformat binary
+	ld -m elf_i386 -o bin/full_kernel.bin -T linker.ld bin/kernel_entry_true.o bin/kernel.o bin/kernel_entry.o bin/hello_screen.o bin/vfs.o bin/stdlib.o bin/string.o bin/pci.o --oformat binary
 	
 
 	nasm -f bin -D KERNEL_SIZE=$(shell stat -c%s bin/full_kernel.bin) boot.asm -o bin/boot.bin
@@ -52,7 +54,7 @@ usb:
 	cat bin/boot.bin bin/full_kernel.bin bin/zeroes.bin  > bin/OS.bin
 	dd if=bin/OS.bin of=bin/main_floppy.img conv=notrunc,fsync status=none
 
-	qemu-system-i386 -hda bin/main_floppy.img
+	qemu-system-i386 -hda bin/main_floppy.img -device usb-ehci,id=ehci
 
 test_boot:
 	dd if=/dev/zero of=bin/main_floppy.img bs=512 count=2880 status=none

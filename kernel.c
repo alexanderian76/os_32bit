@@ -7,6 +7,7 @@
 #include "pci.h"
 #include "stdlib.h"
 #include "ata.h"
+#include "string.h"
 
 int VIDEO_MEMORY = 0xB8000;
 uint32_t page_directory[1024] __attribute__((aligned(4096)));
@@ -20,8 +21,8 @@ struct idt_descriptor idt_desc;
 void kernel_main()
 {
     helloScreen();
-    //  wait_seconds(10);
-    //    clearScreen();
+      wait_seconds(5);
+        clearScreen();
     print("Stack bottom: ");
     print_hex((uint32_t)&stack_bottom);
     print("\nStack top: ");
@@ -47,7 +48,7 @@ void kernel_main()
     {
         print("✗ ESP is OUTSIDE stack bounds!\n");
     }
-
+    // wait_seconds(10);
     print("Initializing... \n");
 
     /*  int i;
@@ -172,7 +173,7 @@ void kernel_main()
          */
     // Main loop
 
-     clearScreen();
+    clearScreen();
     // pci_init();
     pci_device_t *dev = (pci_device_t *)malloc(sizeof(pci_device_t));
     //    heap_end += sizeof(pci_device_t);
@@ -270,14 +271,16 @@ void keyboard_handler()
     //  print_char(statusCode);
     if (scancode < 128)
     {
-        if(keyboard_map[(unsigned char)scancode] == 'w')
+        if (keyboard_map[(unsigned char)scancode] == 'w')
         {
-            ata_write_sector(2000, "qwe");
+            char *tmp = (char *)malloc(sizeof(char) * 100);
+            strcpy(tmp, "asdasdsadsaddsa 98897987976876123000");
+            ata_write_sector(100, tmp);
         }
-        else if(keyboard_map[(unsigned char)scancode] == 'q')
+        else if (keyboard_map[(unsigned char)scancode] == 'q')
         {
-            char *tmp = (char*)malloc(sizeof(char) * 10);
-            ata_read_sector(2000, tmp);
+            char *tmp = (char *)malloc(sizeof(char) * 100);
+            ata_read_sector(100, tmp);
             print(tmp);
         }
         else if (keyboard_map[(unsigned char)scancode] == 0x8)
@@ -364,7 +367,7 @@ void keyboard_handler()
             //  path = path - 9;
             // print(path);
 
-            // Создаем и открываем файл
+            // открываем файл
             if (vfs_open(path, O_RDWR, &file) == 0)
             {
                 vfs_lseek(file, 0, 0);
